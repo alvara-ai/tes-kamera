@@ -2,66 +2,60 @@ const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 
-let hue = 0; // Untuk efek warna pelangi yang berubah-ubah
+let hue = 0;
 
 function onResults(results) {
+  // Samakan ukuran canvas dengan video
+  canvasElement.width = videoElement.videoWidth || 640;
+  canvasElement.height = videoElement.videoHeight || 480;
+
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
   
-  // 1. Gambar Video Webcam
+  // Gambar ulang frame video
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-  // Ubah warna pelangi perlahan di setiap frame
-  hue = (hue + 2) % 360;
+  hue = (hue + 3) % 360;
 
-  // 2. Gambar Filter Wajah (Warna-warni seperti di video)
-  if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-    for (const landmarks of results.multiFaceLandmarks) {
-      canvasCtx.beginPath();
-      // Hubungkan titik luar wajah
-      for (let i = 0; i < landmarks.length; i += 5) {
-        const x = landmarks[i].x * canvasElement.width;
-        const y = landmarks[i].y * canvasElement.height;
-        if (i === 0) canvasCtx.moveTo(x, y);
-        else canvasCtx.lineTo(x, y);
-      }
-      canvasCtx.closePath();
-      
-      // Beri warna transparan warna-warni pada wajah
-      canvasCtx.fillStyle = `hsla(${hue}, 100%, 50%, 0.4)`;
-      canvasCtx.fill();
-      canvasCtx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-      canvasCtx.lineWidth = 2;
-      canvasCtx.stroke();
+  // 1. Gambar Efek Wajah
+  if (results.faceLandmarks) {
+    canvasCtx.beginPath();
+    for (let i = 0; i < results.faceLandmarks.length; i += 4) {
+      const pt = results.faceLandmarks[i];
+      const x = pt.x * canvasElement.width;
+      const y = pt.y * canvasElement.height;
+      if (i === 0) canvasCtx.moveTo(x, y);
+      else canvasCtx.lineTo(x, y);
     }
+    canvasCtx.closePath();
+    canvasCtx.fillStyle = `hsla(${hue}, 100%, 50%, 0.35)`;
+    canvasCtx.fill();
+    canvasCtx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+    canvasCtx.lineWidth = 2;
+    canvasCtx.stroke();
   }
 
-  // 3. Gambar Garis Antar Jari Tangan (Efek Benang Spiderman)
-  if (results.multiHandLandmarks && results.multiHandLandmarks.length >= 2) {
-    // Ambil posisi ujung jari telunjuk (Index Fingertip = Landmark 8)
-    const hand1 = results.multiHandLandmarks[0][8];
-    const hand2 = results.multiHandLandmarks[1][8];
+  // 2. Garis Antar Jari Tangan Kiri & Kanan (Landmark 8 = Ujung Jari Telunjuk)
+  if (results.leftHandLandmarks && results.rightHandLandmarks) {
+    const p1 = results.leftHandLandmarks[8];
+    const p2 = results.rightHandLandmarks[8];
 
-    const x1 = hand1.x * canvasElement.width;
-    const y1 = hand1.y * canvasElement.height;
-    const x2 = hand2.x * canvasElement.width;
-    const y2 = hand2.y * canvasElement.height;
+    const x1 = p1.x * canvasElement.width;
+    const y1 = p1.y * canvasElement.height;
+    const x2 = p2.x * canvasElement.width;
+    const y2 = p2.y * canvasElement.height;
 
-    // Gambar garis laser/benang di antara kedua ujung jari
     canvasCtx.beginPath();
     canvasCtx.moveTo(x1, y1);
     canvasCtx.lineTo(x2, y2);
-    canvasCtx.strokeStyle = `hsl(${hue}, 100%, 70%)`;
-    canvasCtx.lineWidth = 4;
-    canvasCtx.shadowBlur = 10;
-    canvasCtx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+    canvasCtx.strokeStyle = `hsl(${hue}, 100%, 65%)`;
+    canvasCtx.lineWidth = 6;
     canvasCtx.stroke();
   }
 
   canvasCtx.restore();
 }
 
-// Inisialisasi Deteksi Wajah & Tangan (MediaPipe Holistic)
 const holistic = new Holistic({
   locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`
 });
@@ -75,7 +69,6 @@ holistic.setOptions({
 
 holistic.onResults(onResults);
 
-// Jalankan Kamera
 const camera = new Camera(videoElement, {
   onFrame: async () => {
     await holistic.send({image: videoElement});
@@ -83,4 +76,5 @@ const camera = new Camera(videoElement, {
   width: 640,
   height: 480
 });
+
 camera.start();
