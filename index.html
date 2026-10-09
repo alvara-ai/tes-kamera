@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Webcam Filter Spiderman</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Import MediaPipe Face Mesh & Hands via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="container">
+    <h2>Filter Web Real-time</h2>
+    <video id="input_video" style="display:none;"></video>
+    <canvas id="output_canvas" width="640" height="480"></canvas>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

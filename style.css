@@ -1,0 +1,17 @@
+body {
+  margin: 0;
+  background-color: #121212;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-family: sans-serif;
+}
+.container {
+  text-align: center;
+}
+canvas {
+  border: 2px solid #ff0055;
+  border-radius: 8px;
+}
