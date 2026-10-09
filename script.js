@@ -2,58 +2,63 @@ const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 
-// Mode Efek Multiverse Khas Film Spider-Verse
 const spiderModes = [
-  { name: 'ANOMALY GLITCH (MILES)', type: 'glitch' },
-  { name: 'SPIDER-WEB MESH', type: 'web' },
-  { name: 'THERMAL DIMENSION', type: 'thermal' },
-  { name: 'HALFTONE COMIC DOTS', type: 'halftone' }
+  { name: 'EARTH-1610 (MILES GLITCH)', type: 'miles_glitch' },
+  { name: 'EARTH-42 (PROWLER ANOMALY)', type: 'prowler' },
+  { name: 'EARTH-2099 (CYBER MESH)', type: 'cyber_mesh' },
+  { name: 'SPIDER-SENSE COMIC DOTS', type: 'halftone' }
 ];
 
 let currentModeIndex = 0;
 let lastPinchTime = 0;
-let glitchOffset = 0;
+let glitchTimer = 0;
 
-function drawSpiderEffects(type, w, h) {
-  glitchOffset = Math.sin(Date.now() / 100) * 12;
+function drawSpiderVerseFX(type, w, h) {
+  glitchTimer += 0.2;
+  const shakeX = (Math.random() - 0.5) * 15;
+  const shakeY = (Math.random() - 0.5) * 15;
 
-  if (type === 'glitch') {
-    // RGB Split / Chromatic Aberration khas Spider-Verse
+  if (type === 'miles_glitch') {
+    // RGB Split + Glitch Bergetar
     canvasCtx.globalCompositeOperation = 'difference';
     canvasCtx.fillStyle = '#ff0055';
-    canvasCtx.fillRect(glitchOffset, 0, w, h);
+    canvasCtx.fillRect(shakeX, 0, w, h);
     canvasCtx.fillStyle = '#00ffff';
-    canvasCtx.fillRect(-glitchOffset, 0, w, h);
-  } else if (type === 'web') {
-    // Kisi-kisi Jaring Laba-laba Cyber
-    canvasCtx.strokeStyle = 'rgba(0, 255, 200, 0.6)';
-    canvasCtx.lineWidth = 2;
-    for (let x = 0; x < w; x += 30) {
-      canvasCtx.beginPath();
-      canvasCtx.moveTo(x, 0);
-      canvasCtx.lineTo(x, h);
-      canvasCtx.stroke();
-    }
-    for (let y = 0; y < h; y += 30) {
-      canvasCtx.beginPath();
-      canvasCtx.moveTo(0, y);
-      canvasCtx.lineTo(w, y);
-      canvasCtx.stroke();
-    }
-  } else if (type === 'thermal') {
-    // Inversi Warna Prowler / Thermal Anomaly
+    canvasCtx.fillRect(-shakeX, shakeY, w, h);
+  } else if (type === 'prowler') {
+    // Warna Ungu Neon Prowler + Invert
     canvasCtx.globalCompositeOperation = 'difference';
-    canvasCtx.fillStyle = '#ffffff';
+    canvasCtx.fillStyle = '#8a2be2';
     canvasCtx.fillRect(0, 0, w, h);
+    canvasCtx.globalCompositeOperation = 'screen';
+    canvasCtx.fillStyle = '#39ff14';
+    canvasCtx.fillRect(shakeX, 0, w, h);
+  } else if (type === 'cyber_mesh') {
+    // Grid Cyber Jaring 2099
+    canvasCtx.strokeStyle = 'rgba(255, 0, 85, 0.8)';
+    canvasCtx.lineWidth = 3;
+    const step = 25;
+    for (let x = 0; x < w; x += step) {
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(x + Math.sin(glitchTimer) * 5, 0);
+      canvasCtx.lineTo(x - Math.sin(glitchTimer) * 5, h);
+      canvasCtx.stroke();
+    }
+    for (let y = 0; y < h; y += step) {
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(0, y + Math.cos(glitchTimer) * 5);
+      canvasCtx.lineTo(w, y - Math.cos(glitchTimer) * 5);
+      canvasCtx.stroke();
+    }
   } else if (type === 'halftone') {
-    // Efek Bintik Komik Khas Marvel Comics
-    canvasCtx.fillStyle = 'rgba(255, 0, 85, 0.35)';
+    // Bintik Komik & Tint Merah
+    canvasCtx.fillStyle = 'rgba(255, 0, 85, 0.4)';
     canvasCtx.fillRect(0, 0, w, h);
     canvasCtx.fillStyle = '#000000';
-    for (let x = 10; x < w; x += 20) {
-      for (let y = 10; y < h; y += 20) {
+    for (let x = 12; x < w; x += 24) {
+      for (let y = 12; y < h; y += 24) {
         canvasCtx.beginPath();
-        canvasCtx.arc(x, y, 4, 0, 2 * Math.PI);
+        canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
         canvasCtx.fill();
       }
     }
@@ -67,12 +72,12 @@ function onResults(results) {
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-  // 1. Tampilkan Gambar Kamera Normal (Latar Belakang)
+  // 1. Gambar Latar Belakang Webcam Normal
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
   const currentTime = Date.now();
 
-  // 2. Deteksi Gestur Tabrakan Ibu Jari & Telunjuk (Pinch) untuk Ganti Dimensi
+  // 2. Deteksi Tabrakan Jari (Pinch) untuk Ganti Filter
   const checkPinch = (handLandmarks) => {
     if (!handLandmarks) return false;
     const thumb = handLandmarks[4];
@@ -89,7 +94,7 @@ function onResults(results) {
     lastPinchTime = currentTime;
   }
 
-  // 3. Render Portal Bingkai 4 Jari (2 Ibu Jari + 2 Telunjuk)
+  // 3. Render Portal Bingkai 4 Jari
   if (results.leftHandLandmarks && results.rightHandLandmarks) {
     const lIndex = results.leftHandLandmarks[8];
     const lThumb = results.leftHandLandmarks[4];
@@ -101,7 +106,7 @@ function onResults(results) {
     const pRIndex = { x: rIndex.x * canvasElement.width, y: rIndex.y * canvasElement.height };
     const pRThumb = { x: rThumb.x * canvasElement.width, y: rThumb.y * canvasElement.height };
 
-    // Tentukan Batas Potongan Portal
+    // Masking Area Dalam Portal
     canvasCtx.save();
     canvasCtx.beginPath();
     canvasCtx.moveTo(pLIndex.x, pLIndex.y);
@@ -111,14 +116,15 @@ function onResults(results) {
     canvasCtx.closePath();
     canvasCtx.clip();
 
-    // Gambar ulang video di dalam portal
-    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+    // Gambar ulang video dengan efek distorsi di dalam portal
+    const shakeOffset = Math.sin(Date.now() / 50) * 8;
+    canvasCtx.drawImage(results.image, shakeOffset, 0, canvasElement.width, canvasElement.height);
 
-    // Terapkan Efek Spider-Verse Aktif
-    drawSpiderEffects(spiderModes[currentModeIndex].type, canvasElement.width, canvasElement.height);
+    // Terapkan Efek Spider-Verse
+    drawSpiderVerseFX(spiderModes[currentModeIndex].type, canvasElement.width, canvasElement.height);
     canvasCtx.restore();
 
-    // Garis Energi Portal Spider-Verse
+    // Bingkai Portal Berkilau (Glow Effect)
     canvasCtx.beginPath();
     canvasCtx.moveTo(pLIndex.x, pLIndex.y);
     canvasCtx.lineTo(pRIndex.x, pRIndex.y);
@@ -126,25 +132,34 @@ function onResults(results) {
     canvasCtx.lineTo(pLThumb.x, pLThumb.y);
     canvasCtx.closePath();
 
-    canvasCtx.strokeStyle = isPinching ? '#ff0055' : '#00ffff';
-    canvasCtx.lineWidth = 5;
-    canvasCtx.shadowBlur = 20;
+    canvasCtx.strokeStyle = isPinching ? '#39ff14' : '#ff0055';
+    canvasCtx.lineWidth = 6;
+    canvasCtx.shadowBlur = 25;
     canvasCtx.shadowColor = '#ff0055';
     canvasCtx.stroke();
 
-    // Indikator Titik Jari
+    // Titik Laser di Ujung Jari
     [pLIndex, pLThumb, pRIndex, pRThumb].forEach(pt => {
       canvasCtx.beginPath();
-      canvasCtx.arc(pt.x, pt.y, 6, 0, 2 * Math.PI);
-      canvasCtx.fillStyle = '#ff0055';
+      canvasCtx.arc(pt.x, pt.y, 7, 0, 2 * Math.PI);
+      canvasCtx.fillStyle = '#00ffff';
+      canvasCtx.shadowBlur = 10;
+      canvasCtx.shadowColor = '#00ffff';
       canvasCtx.fill();
     });
   }
 
-  // Teks Mode Spider-Verse
-  canvasCtx.fillStyle = '#00ffff';
-  canvasCtx.font = 'bold 18px monospace';
-  canvasCtx.fillText(`[SPIDER-VERSE PORTAL: ${spiderModes[currentModeIndex].name}]`, 20, 40);
+  // HUD Multiverse Portal
+  canvasCtx.shadowBlur = 0;
+  canvasCtx.fillStyle = '#ff0055';
+  canvasCtx.font = 'bold 20px Courier New';
+  canvasCtx.fillText(`[DIMENSION: ${spiderModes[currentModeIndex].name}]`, 20, 35);
+
+  if (isPinching) {
+    canvasCtx.fillStyle = '#39ff14';
+    canvasCtx.font = 'bold 24px Impact';
+    canvasCtx.fillText('ANOMALY DETECTED!', 20, 70);
+  }
 
   canvasCtx.restore();
 }
