@@ -2,14 +2,7 @@ const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 
-function drawLine(p1, p2, color, width) {
-  canvasCtx.beginPath();
-  canvasCtx.moveTo(p1.x * canvasElement.width, p1.y * canvasElement.height);
-  canvasCtx.lineTo(p2.x * canvasElement.width, p2.y * canvasElement.height);
-  canvasCtx.strokeStyle = color;
-  canvasCtx.lineWidth = width;
-  canvasCtx.stroke();
-}
+let hue = 0;
 
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth || 640;
@@ -21,60 +14,53 @@ function onResults(results) {
   // 1. Tampilkan Gambar Webcam
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-  let isHandGestureActive = false;
+  hue = (hue + 3) % 360;
 
-  // 2. Deteksi Jari Tangan (Jarak Telunjuk)
+  // Cek apakah kedua tangan terdeteksi
   if (results.leftHandLandmarks && results.rightHandLandmarks) {
+    // Landmark 4 = Ujung Ibu Jari (Thumb), Landmark 8 = Ujung Jari Telunjuk (Index)
     const leftIndex = results.leftHandLandmarks[8];
+    const leftThumb = results.leftHandLandmarks[4];
     const rightIndex = results.rightHandLandmarks[8];
+    const rightThumb = results.rightHandLandmarks[4];
 
-    // Hitung jarak antara kedua telunjuk
-    const dx = (leftIndex.x - rightIndex.x) * canvasElement.width;
-    const dy = (leftIndex.y - rightIndex.y) * canvasElement.height;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    // Konversi koordinat ke pixel canvas
+    const pLeftIndex = { x: leftIndex.x * canvasElement.width, y: leftIndex.y * canvasElement.height };
+    const pLeftThumb = { x: leftThumb.x * canvasElement.width, y: leftThumb.y * canvasElement.height };
+    const pRightIndex = { x: rightIndex.x * canvasElement.width, y: rightIndex.y * canvasElement.height };
+    const pRightThumb = { x: rightThumb.x * canvasElement.width, y: rightThumb.y * canvasElement.height };
 
-    // Jika telunjuk cukup dekat atau direntangkan, gambar garis penghubung
-    if (distance < 300) {
-      isHandGestureActive = true;
-      drawLine(leftIndex, rightIndex, '#00ffcc', 6);
-      
-      // Lingkaran di ujung jari
-      canvasCtx.fillStyle = '#ff0055';
-      canvasCtx.beginPath();
-      canvasCtx.arc(leftIndex.x * canvasElement.width, leftIndex.y * canvasElement.height, 8, 0, 2 * Math.PI);
-      canvasCtx.arc(rightIndex.x * canvasElement.width, rightIndex.y * canvasElement.height, 8, 0, 2 * Math.PI);
-      canvasCtx.fill();
-    }
-  }
+    // 2. Gambar Garis Laser Penghubung Antar Jari
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(pLeftIndex.x, pLeftIndex.y);
+    canvasCtx.lineTo(pRightIndex.x, pRightIndex.y);
+    canvasCtx.lineTo(pRightThumb.x, pRightThumb.y);
+    canvasCtx.lineTo(pLeftThumb.x, pLeftThumb.y);
+    canvasCtx.closePath();
 
-  // 3. Efek Wajah (Spider-man / Cyber Mesh / Thermal)
-  if (results.faceLandmarks) {
-    const landmarks = results.faceLandmarks;
+    canvasCtx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+    canvasCtx.lineWidth = 4;
+    canvasCtx.stroke();
 
-    if (isHandGestureActive) {
-      // Efek Thermal / Full Mask saat gestur aktif
-      canvasCtx.beginPath();
-      for (let i = 0; i < landmarks.length; i += 2) {
-        const pt = landmarks[i];
-        const x = pt.x * canvasElement.width;
-        const y = pt.y * canvasElement.height;
-        if (i === 0) canvasCtx.moveTo(x, y);
-        else canvasCtx.lineTo(x, y);
-      }
-      canvasCtx.closePath();
-      canvasCtx.fillStyle = 'rgba(255, 0, 85, 0.45)';
-      canvasCtx.fill();
-      canvasCtx.strokeStyle = '#00ffff';
-      canvasCtx.lineWidth = 1.5;
-      canvasCtx.stroke();
-    } else {
-      // Efek Grid Wajah Bawaan (Spider Web Mesh)
-      canvasCtx.fillStyle = '#00ffaa';
-      for (let i = 0; i < landmarks.length; i += 4) {
-        const x = landmarks[i].x * canvasElement.width;
-        const y = landmarks[i].y * canvasElement.height;
-        canvasCtx.fillRect(x, y, 2, 2);
-      }
+    // 3. Efek Frame / Filter Warna di Dalam Area 4 Jari
+    // Cari batas kotak (bounding box) dari keempat ujung jari
+    const minX = Math.min(pLeftIndex.x, pLeftThumb.x, pRightIndex.x, pRightThumb.x);
+    const maxX = Math.max(pLeftIndex.x, pLeftThumb.x, pRightIndex.x, pRightThumb.x);
+    const minY = Math.min(pLeftIndex.y, pLeftThumb.y, pRightIndex.y, pRightThumb.y);
+    const maxY = Math.max(pLeftIndex.y, pLeftThumb.y, pRightIndex.y, pRightThumb.y);
+
+    const frameWidth = maxX - minX;
+    const frameHeight = maxY - minY;
+
+    if (frameWidth > 20 && frameHeight > 20) {
+      // Isi area dalam jari dengan efek warna transparan (seperti di video)
+      canvasCtx.fillStyle = `hsla(${hue}, 100%, 50%, 0.45)`;
+      canvasCtx.fillRect(minX, minY, frameWidth, frameHeight);
+
+      // Bingkai luar kotak
+      canvasCtx.strokeStyle = '#ffffff';
+      canvasCtx.lineWidth = 2;
+      canvasCtx.strokeRect(minX, minY, frameWidth, frameHeight);
     }
   }
 
