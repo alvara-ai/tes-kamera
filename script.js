@@ -2,8 +2,6 @@ const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 
-let hue = 0;
-
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth || 640;
   canvasElement.height = videoElement.videoHeight || 480;
@@ -11,57 +9,64 @@ function onResults(results) {
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-  // 1. Tampilkan Gambar Webcam
+  // 1. Lukis Paparan Webcam Asal (Latar Belakang)
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-  hue = (hue + 3) % 360;
-
-  // Cek apakah kedua tangan terdeteksi
+  // 2. Semak Jika Kedua-dua Tangan Dikesan
   if (results.leftHandLandmarks && results.rightHandLandmarks) {
-    // Landmark 4 = Ujung Ibu Jari (Thumb), Landmark 8 = Ujung Jari Telunjuk (Index)
-    const leftIndex = results.leftHandLandmarks[8];
-    const leftThumb = results.leftHandLandmarks[4];
-    const rightIndex = results.rightHandLandmarks[8];
-    const rightThumb = results.rightHandLandmarks[4];
+    // Landmark 8 = Hujung Jari Telunjuk, Landmark 4 = Hujung Ibu Jari
+    const lIndex = results.leftHandLandmarks[8];
+    const lThumb = results.leftHandLandmarks[4];
+    const rIndex = results.rightHandLandmarks[8];
+    const rThumb = results.rightHandLandmarks[4];
 
-    // Konversi koordinat ke pixel canvas
-    const pLeftIndex = { x: leftIndex.x * canvasElement.width, y: leftIndex.y * canvasElement.height };
-    const pLeftThumb = { x: leftThumb.x * canvasElement.width, y: leftThumb.y * canvasElement.height };
-    const pRightIndex = { x: rightIndex.x * canvasElement.width, y: rightIndex.y * canvasElement.height };
-    const pRightThumb = { x: rightThumb.x * canvasElement.width, y: rightThumb.y * canvasElement.height };
+    const pLIndex = { x: lIndex.x * canvasElement.width, y: lIndex.y * canvasElement.height };
+    const pLThumb = { x: lThumb.x * canvasElement.width, y: lThumb.y * canvasElement.height };
+    const pRIndex = { x: rIndex.x * canvasElement.width, y: rIndex.y * canvasElement.height };
+    const pRThumb = { x: rThumb.x * canvasElement.width, y: rThumb.y * canvasElement.height };
 
-    // 2. Gambar Garis Laser Penghubung Antar Jari
+    // --- A. CIPTA KAWASAN BINGKAI ANTARA JARI (MASKING) ---
+    canvasCtx.save();
     canvasCtx.beginPath();
-    canvasCtx.moveTo(pLeftIndex.x, pLeftIndex.y);
-    canvasCtx.lineTo(pRightIndex.x, pRightIndex.y);
-    canvasCtx.lineTo(pRightThumb.x, pRightThumb.y);
-    canvasCtx.lineTo(pLeftThumb.x, pLeftThumb.y);
+    canvasCtx.moveTo(pLIndex.x, pLIndex.y);
+    canvasCtx.lineTo(pRIndex.x, pRIndex.y);
+    canvasCtx.lineTo(pRThumb.x, pRThumb.y);
+    canvasCtx.lineTo(pLThumb.x, pLThumb.y);
     canvasCtx.closePath();
 
-    canvasCtx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-    canvasCtx.lineWidth = 4;
+    // Potong kawasan kanvas mengikut bentuk 4 jari sahaja
+    canvasCtx.clip();
+
+    // --- B. KESAN VISUAL DI DALAM BINGKAI (EFEK INVERT / THERMAL) ---
+    // Lukis semula video di kawasan potong
+    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+    
+    // Gunakan mod warna Invert / Thermal pada kawasan dalam tangan
+    canvasCtx.globalCompositeOperation = 'difference';
+    canvasCtx.fillStyle = 'white';
+    canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    canvasCtx.restore();
+
+    // --- C. LUKIS GARISAN SEMPADAN DAN BULATAN DI HUJUNG JARI ---
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(pLIndex.x, pLIndex.y);
+    canvasCtx.lineTo(pRIndex.x, pRIndex.y);
+    canvasCtx.lineTo(pRThumb.x, pRThumb.y);
+    canvasCtx.lineTo(pLThumb.x, pLThumb.y);
+    canvasCtx.closePath();
+
+    canvasCtx.strokeStyle = '#00ffcc';
+    canvasCtx.lineWidth = 3;
     canvasCtx.stroke();
 
-    // 3. Efek Frame / Filter Warna di Dalam Area 4 Jari
-    // Cari batas kotak (bounding box) dari keempat ujung jari
-    const minX = Math.min(pLeftIndex.x, pLeftThumb.x, pRightIndex.x, pRightThumb.x);
-    const maxX = Math.max(pLeftIndex.x, pLeftThumb.x, pRightIndex.x, pRightThumb.x);
-    const minY = Math.min(pLeftIndex.y, pLeftThumb.y, pRightIndex.y, pRightThumb.y);
-    const maxY = Math.max(pLeftIndex.y, pLeftThumb.y, pRightIndex.y, pRightThumb.y);
-
-    const frameWidth = maxX - minX;
-    const frameHeight = maxY - minY;
-
-    if (frameWidth > 20 && frameHeight > 20) {
-      // Isi area dalam jari dengan efek warna transparan (seperti di video)
-      canvasCtx.fillStyle = `hsla(${hue}, 100%, 50%, 0.45)`;
-      canvasCtx.fillRect(minX, minY, frameWidth, frameHeight);
-
-      // Bingkai luar kotak
-      canvasCtx.strokeStyle = '#ffffff';
-      canvasCtx.lineWidth = 2;
-      canvasCtx.strokeRect(minX, minY, frameWidth, frameHeight);
-    }
+    // Lukis titik merah di hujung jari telunjuk & ibu jari
+    [pLIndex, pLThumb, pRIndex, pRThumb].forEach(pt => {
+      canvasCtx.beginPath();
+      canvasCtx.arc(pt.x, pt.y, 6, 0, 2 * Math.PI);
+      canvasCtx.fillStyle = '#ff0055';
+      canvasCtx.fill();
+    });
   }
 
   canvasCtx.restore();
