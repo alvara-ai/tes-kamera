@@ -2,51 +2,80 @@ const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 
-let hue = 0;
+function drawLine(p1, p2, color, width) {
+  canvasCtx.beginPath();
+  canvasCtx.moveTo(p1.x * canvasElement.width, p1.y * canvasElement.height);
+  canvasCtx.lineTo(p2.x * canvasElement.width, p2.y * canvasElement.height);
+  canvasCtx.strokeStyle = color;
+  canvasCtx.lineWidth = width;
+  canvasCtx.stroke();
+}
 
 function onResults(results) {
+  canvasElement.width = videoElement.videoWidth || 640;
+  canvasElement.height = videoElement.videoHeight || 480;
+
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-  
-  // Tampilkan video webcam
+
+  // 1. Tampilkan Gambar Webcam
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-  hue = (hue + 4) % 360;
+  let isHandGestureActive = false;
 
-  // 1. Filter Masker Wajah
-  if (results.faceLandmarks) {
-    canvasCtx.beginPath();
-    for (let i = 0; i < results.faceLandmarks.length; i += 3) {
-      const pt = results.faceLandmarks[i];
-      const x = pt.x * canvasElement.width;
-      const y = pt.y * canvasElement.height;
-      if (i === 0) canvasCtx.moveTo(x, y);
-      else canvasCtx.lineTo(x, y);
+  // 2. Deteksi Jari Tangan (Jarak Telunjuk)
+  if (results.leftHandLandmarks && results.rightHandLandmarks) {
+    const leftIndex = results.leftHandLandmarks[8];
+    const rightIndex = results.rightHandLandmarks[8];
+
+    // Hitung jarak antara kedua telunjuk
+    const dx = (leftIndex.x - rightIndex.x) * canvasElement.width;
+    const dy = (leftIndex.y - rightIndex.y) * canvasElement.height;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Jika telunjuk cukup dekat atau direntangkan, gambar garis penghubung
+    if (distance < 300) {
+      isHandGestureActive = true;
+      drawLine(leftIndex, rightIndex, '#00ffcc', 6);
+      
+      // Lingkaran di ujung jari
+      canvasCtx.fillStyle = '#ff0055';
+      canvasCtx.beginPath();
+      canvasCtx.arc(leftIndex.x * canvasElement.width, leftIndex.y * canvasElement.height, 8, 0, 2 * Math.PI);
+      canvasCtx.arc(rightIndex.x * canvasElement.width, rightIndex.y * canvasElement.height, 8, 0, 2 * Math.PI);
+      canvasCtx.fill();
     }
-    canvasCtx.closePath();
-    canvasCtx.fillStyle = `hsla(${hue}, 100%, 50%, 0.4)`;
-    canvasCtx.fill();
-    canvasCtx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-    canvasCtx.lineWidth = 2;
-    canvasCtx.stroke();
   }
 
-  // 2. Garis Antar Jari Telunjuk (Jari Kiri & Kanan)
-  if (results.leftHandLandmarks && results.rightHandLandmarks) {
-    const p1 = results.leftHandLandmarks[8];
-    const p2 = results.rightHandLandmarks[8];
+  // 3. Efek Wajah (Spider-man / Cyber Mesh / Thermal)
+  if (results.faceLandmarks) {
+    const landmarks = results.faceLandmarks;
 
-    const x1 = p1.x * canvasElement.width;
-    const y1 = p1.y * canvasElement.height;
-    const x2 = p2.x * canvasElement.width;
-    const y2 = p2.y * canvasElement.height;
-
-    canvasCtx.beginPath();
-    canvasCtx.moveTo(x1, y1);
-    canvasCtx.lineTo(x2, y2);
-    canvasCtx.strokeStyle = `hsl(${hue}, 100%, 70%)`;
-    canvasCtx.lineWidth = 5;
-    canvasCtx.stroke();
+    if (isHandGestureActive) {
+      // Efek Thermal / Full Mask saat gestur aktif
+      canvasCtx.beginPath();
+      for (let i = 0; i < landmarks.length; i += 2) {
+        const pt = landmarks[i];
+        const x = pt.x * canvasElement.width;
+        const y = pt.y * canvasElement.height;
+        if (i === 0) canvasCtx.moveTo(x, y);
+        else canvasCtx.lineTo(x, y);
+      }
+      canvasCtx.closePath();
+      canvasCtx.fillStyle = 'rgba(255, 0, 85, 0.45)';
+      canvasCtx.fill();
+      canvasCtx.strokeStyle = '#00ffff';
+      canvasCtx.lineWidth = 1.5;
+      canvasCtx.stroke();
+    } else {
+      // Efek Grid Wajah Bawaan (Spider Web Mesh)
+      canvasCtx.fillStyle = '#00ffaa';
+      for (let i = 0; i < landmarks.length; i += 4) {
+        const x = landmarks[i].x * canvasElement.width;
+        const y = landmarks[i].y * canvasElement.height;
+        canvasCtx.fillRect(x, y, 2, 2);
+      }
+    }
   }
 
   canvasCtx.restore();
