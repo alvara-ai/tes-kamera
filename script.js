@@ -5,22 +5,18 @@ const canvasCtx = canvasElement.getContext('2d');
 let hue = 0;
 
 function onResults(results) {
-  // Samakan ukuran canvas dengan video
-  canvasElement.width = videoElement.videoWidth || 640;
-  canvasElement.height = videoElement.videoHeight || 480;
-
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
   
-  // Gambar ulang frame video
+  // Tampilkan video webcam
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-  hue = (hue + 3) % 360;
+  hue = (hue + 4) % 360;
 
-  // 1. Gambar Efek Wajah
+  // 1. Filter Masker Wajah
   if (results.faceLandmarks) {
     canvasCtx.beginPath();
-    for (let i = 0; i < results.faceLandmarks.length; i += 4) {
+    for (let i = 0; i < results.faceLandmarks.length; i += 3) {
       const pt = results.faceLandmarks[i];
       const x = pt.x * canvasElement.width;
       const y = pt.y * canvasElement.height;
@@ -28,14 +24,14 @@ function onResults(results) {
       else canvasCtx.lineTo(x, y);
     }
     canvasCtx.closePath();
-    canvasCtx.fillStyle = `hsla(${hue}, 100%, 50%, 0.35)`;
+    canvasCtx.fillStyle = `hsla(${hue}, 100%, 50%, 0.4)`;
     canvasCtx.fill();
     canvasCtx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
     canvasCtx.lineWidth = 2;
     canvasCtx.stroke();
   }
 
-  // 2. Garis Antar Jari Tangan Kiri & Kanan (Landmark 8 = Ujung Jari Telunjuk)
+  // 2. Garis Antar Jari Telunjuk (Jari Kiri & Kanan)
   if (results.leftHandLandmarks && results.rightHandLandmarks) {
     const p1 = results.leftHandLandmarks[8];
     const p2 = results.rightHandLandmarks[8];
@@ -48,8 +44,8 @@ function onResults(results) {
     canvasCtx.beginPath();
     canvasCtx.moveTo(x1, y1);
     canvasCtx.lineTo(x2, y2);
-    canvasCtx.strokeStyle = `hsl(${hue}, 100%, 65%)`;
-    canvasCtx.lineWidth = 6;
+    canvasCtx.strokeStyle = `hsl(${hue}, 100%, 70%)`;
+    canvasCtx.lineWidth = 5;
     canvasCtx.stroke();
   }
 
