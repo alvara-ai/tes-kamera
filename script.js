@@ -2,38 +2,61 @@ const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 
-// Daftar Universe Spider-Man
-const universes = [
-  { name: 'Earth-1610 (Miles)', type: 'glitch' },
-  { name: 'Earth-42 (Prowler)', type: 'prowler' },
-  { name: 'Earth-2099 (Miguel)', type: 'cyber' },
-  { name: 'Earth-65 (Gwen)', type: 'gwen' }
+// Mode Efek Multiverse Khas Film Spider-Verse
+const spiderModes = [
+  { name: 'ANOMALY GLITCH (MILES)', type: 'glitch' },
+  { name: 'SPIDER-WEB MESH', type: 'web' },
+  { name: 'THERMAL DIMENSION', type: 'thermal' },
+  { name: 'HALFTONE COMIC DOTS', type: 'halftone' }
 ];
 
-let currentUniverseIndex = 0;
+let currentModeIndex = 0;
 let lastPinchTime = 0;
+let glitchOffset = 0;
 
-function applyUniverseFilter(type, width, height) {
+function drawSpiderEffects(type, w, h) {
+  glitchOffset = Math.sin(Date.now() / 100) * 12;
+
   if (type === 'glitch') {
-    // Efek Glitch RGB Split khas Miles Morales
+    // RGB Split / Chromatic Aberration khas Spider-Verse
     canvasCtx.globalCompositeOperation = 'difference';
     canvasCtx.fillStyle = '#ff0055';
-    canvasCtx.fillRect(0, 0, width, height);
-  } else if (type === 'prowler') {
-    // Efek Prowler: Ungu & Hijau Neon
-    canvasCtx.globalCompositeOperation = 'color-burn';
-    canvasCtx.fillStyle = '#8a2be2';
-    canvasCtx.fillRect(0, 0, width, height);
-  } else if (type === 'cyber') {
-    // Efek Cyberpunk Miguel O'Hara 2099
-    canvasCtx.globalCompositeOperation = 'difference';
+    canvasCtx.fillRect(glitchOffset, 0, w, h);
     canvasCtx.fillStyle = '#00ffff';
-    canvasCtx.fillRect(0, 0, width, height);
-  } else if (type === 'gwen') {
-    // Efek Pastel Watercolor Gwen Stacy
-    canvasCtx.globalCompositeOperation = 'screen';
-    canvasCtx.fillStyle = 'rgba(255, 105, 180, 0.6)';
-    canvasCtx.fillRect(0, 0, width, height);
+    canvasCtx.fillRect(-glitchOffset, 0, w, h);
+  } else if (type === 'web') {
+    // Kisi-kisi Jaring Laba-laba Cyber
+    canvasCtx.strokeStyle = 'rgba(0, 255, 200, 0.6)';
+    canvasCtx.lineWidth = 2;
+    for (let x = 0; x < w; x += 30) {
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(x, 0);
+      canvasCtx.lineTo(x, h);
+      canvasCtx.stroke();
+    }
+    for (let y = 0; y < h; y += 30) {
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(0, y);
+      canvasCtx.lineTo(w, y);
+      canvasCtx.stroke();
+    }
+  } else if (type === 'thermal') {
+    // Inversi Warna Prowler / Thermal Anomaly
+    canvasCtx.globalCompositeOperation = 'difference';
+    canvasCtx.fillStyle = '#ffffff';
+    canvasCtx.fillRect(0, 0, w, h);
+  } else if (type === 'halftone') {
+    // Efek Bintik Komik Khas Marvel Comics
+    canvasCtx.fillStyle = 'rgba(255, 0, 85, 0.35)';
+    canvasCtx.fillRect(0, 0, w, h);
+    canvasCtx.fillStyle = '#000000';
+    for (let x = 10; x < w; x += 20) {
+      for (let y = 10; y < h; y += 20) {
+        canvasCtx.beginPath();
+        canvasCtx.arc(x, y, 4, 0, 2 * Math.PI);
+        canvasCtx.fill();
+      }
+    }
   }
 }
 
@@ -44,29 +67,29 @@ function onResults(results) {
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-  // 1. Tampilkan Gambar Utama (Universe Asal)
+  // 1. Tampilkan Gambar Kamera Normal (Latar Belakang)
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
   const currentTime = Date.now();
 
-  // 2. Deteksi Gestur Tabrakan Jari (Pinch) untuk Pindah Universe
+  // 2. Deteksi Gestur Tabrakan Ibu Jari & Telunjuk (Pinch) untuk Ganti Dimensi
   const checkPinch = (handLandmarks) => {
     if (!handLandmarks) return false;
     const thumb = handLandmarks[4];
     const index = handLandmarks[8];
     const dx = (thumb.x - index.x) * canvasElement.width;
     const dy = (thumb.y - index.y) * canvasElement.height;
-    return Math.sqrt(dx * dx + dy * dy) < 30;
+    return Math.sqrt(dx * dx + dy * dy) < 28;
   };
 
   const isPinching = checkPinch(results.leftHandLandmarks) || checkPinch(results.rightHandLandmarks);
 
-  if (isPinching && (currentTime - lastPinchTime > 500)) {
-    currentUniverseIndex = (currentUniverseIndex + 1) % universes.length;
+  if (isPinching && (currentTime - lastPinchTime > 400)) {
+    currentModeIndex = (currentModeIndex + 1) % spiderModes.length;
     lastPinchTime = currentTime;
   }
 
-  // 3. Buat Portal Multiverse di Antara 4 Jari
+  // 3. Render Portal Bingkai 4 Jari (2 Ibu Jari + 2 Telunjuk)
   if (results.leftHandLandmarks && results.rightHandLandmarks) {
     const lIndex = results.leftHandLandmarks[8];
     const lThumb = results.leftHandLandmarks[4];
@@ -78,7 +101,7 @@ function onResults(results) {
     const pRIndex = { x: rIndex.x * canvasElement.width, y: rIndex.y * canvasElement.height };
     const pRThumb = { x: rThumb.x * canvasElement.width, y: rThumb.y * canvasElement.height };
 
-    // Potong area di dalam portal jari
+    // Tentukan Batas Potongan Portal
     canvasCtx.save();
     canvasCtx.beginPath();
     canvasCtx.moveTo(pLIndex.x, pLIndex.y);
@@ -88,9 +111,11 @@ function onResults(results) {
     canvasCtx.closePath();
     canvasCtx.clip();
 
-    // Tampilkan tampilan Universe lain di dalam portal
+    // Gambar ulang video di dalam portal
     canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-    applyUniverseFilter(universes[currentUniverseIndex].type, canvasElement.width, canvasElement.height);
+
+    // Terapkan Efek Spider-Verse Aktif
+    drawSpiderEffects(spiderModes[currentModeIndex].type, canvasElement.width, canvasElement.height);
     canvasCtx.restore();
 
     // Garis Energi Portal Spider-Verse
@@ -100,17 +125,26 @@ function onResults(results) {
     canvasCtx.lineTo(pRThumb.x, pRThumb.y);
     canvasCtx.lineTo(pLThumb.x, pLThumb.y);
     canvasCtx.closePath();
+
     canvasCtx.strokeStyle = isPinching ? '#ff0055' : '#00ffff';
-    canvasCtx.lineWidth = 4;
-    canvasCtx.shadowBlur = 15;
+    canvasCtx.lineWidth = 5;
+    canvasCtx.shadowBlur = 20;
     canvasCtx.shadowColor = '#ff0055';
     canvasCtx.stroke();
+
+    // Indikator Titik Jari
+    [pLIndex, pLThumb, pRIndex, pRThumb].forEach(pt => {
+      canvasCtx.beginPath();
+      canvasCtx.arc(pt.x, pt.y, 6, 0, 2 * Math.PI);
+      canvasCtx.fillStyle = '#ff0055';
+      canvasCtx.fill();
+    });
   }
 
-  // Tampilkan Nama Universe di Pojok Layar
+  // Teks Mode Spider-Verse
   canvasCtx.fillStyle = '#00ffff';
-  canvasCtx.font = 'bold 20px sans-serif';
-  canvasCtx.fillText(`PORTAL: ${universes[currentUniverseIndex].name}`, 20, 40);
+  canvasCtx.font = 'bold 18px monospace';
+  canvasCtx.fillText(`[SPIDER-VERSE PORTAL: ${spiderModes[currentModeIndex].name}]`, 20, 40);
 
   canvasCtx.restore();
 }
